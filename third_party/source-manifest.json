@@ -1,0 +1,64 @@
+{
+  "format": 1,
+  "embeddedHeicSha256": "0a6c14c89cf584482324ec5ff3ecaf21672bf77a20f95e3c04e2f68823137e59",
+  "provenanceNote": "Upstream tags are not proof of byte-for-byte correspondence with embedded WASM/JS.",
+  "archives": {
+    "third_party/NijRAW_HEIC_Source_1.23.7.zip": {
+      "sha256": "8b02792b1411f85580af7f86184d6fb09e20951f80b9c25f19745c8d243f7101",
+      "bytes": 9921278,
+      "requiredFiles": [
+        "NijRAW_HEIC_Source_1.23.7/heic-to-1.6.7/README.md",
+        "NijRAW_HEIC_Source_1.23.7/libheif-v1.23.7/README.md",
+        "NijRAW_HEIC_Source_1.23.7/libde265-v1.1.3/README.md",
+        "NijRAW_HEIC_Source_1.23.7/heic-to-1.6.7/LICENSE",
+        "NijRAW_HEIC_Source_1.23.7/heic-to-1.6.7/src/index.js",
+        "NijRAW_HEIC_Source_1.23.7/heic-to-1.6.7/src/lib/libheif.js",
+        "NijRAW_HEIC_Source_1.23.7/libheif-v1.23.7/COPYING",
+        "NijRAW_HEIC_Source_1.23.7/libheif-v1.23.7/build-emscripten.sh",
+        "NijRAW_HEIC_Source_1.23.7/libde265-v1.1.3/COPYING",
+        "NijRAW_HEIC_Source_1.23.7/libde265-v1.1.3/CMakeLists.txt",
+        "NijRAW_HEIC_Source_1.23.7/SOURCE_PROVENANCE.md",
+        "NijRAW_HEIC_Source_1.23.7/REBUILDING_HEIC.md"
+      ],
+      "upstream": [
+        {
+          "name": "heic-to-1.6.7",
+          "url": "https://github.com/hoppergee/heic-to.git",
+          "tag": "v1.6.7",
+          "commit": "78345a3fcdb4a1d70d513fce2646aeff0127f7ba"
+        },
+        {
+          "name": "libheif-v1.23.7",
+          "url": "https://github.com/strukturag/libheif.git",
+          "tag": "v1.23.7",
+          "commit": "12a259a5882dd99d45ec5fc77e296a3b620d1e2e"
+        },
+        {
+          "name": "libde265-v1.1.3",
+          "url": "https://github.com/strukturag/libde265.git",
+          "tag": "v1.1.3",
+          "commit": "ba62bf4cfb3242f3bf0a45617ff09e35236e4d82"
+        }
+      ]
+    },
+    "third_party/NijRAW_LibRaw_Source_0.22.3.zip": {
+      "sha256": "08c6d3429d39907a45c191a3c283ce4ea6ca2b21f4469616a1f19e8d32559e2e",
+      "bytes": 756139,
+      "requiredFiles": [
+        "NijRAW_LibRaw_Source_0.22.3/LibRaw-0.22.3/README.md",
+        "NijRAW_LibRaw_Source_0.22.3/LibRaw-0.22.3/COPYRIGHT",
+        "NijRAW_LibRaw_Source_0.22.3/LibRaw-0.22.3/LICENSE.LGPL",
+        "NijRAW_LibRaw_Source_0.22.3/LibRaw-0.22.3/LICENSE.CDDL",
+        "NijRAW_LibRaw_Source_0.22.3/SOURCE_PROVENANCE.md"
+      ],
+      "upstream": [
+        {
+          "name": "LibRaw-0.22.3",
+          "url": "https://github.com/LibRaw/LibRaw.git",
+          "tag": "0.22.3",
+          "commit": "cf02d66eb5c19d4e46df7aee0582e47a4918509a"
+        }
+      ]
+    }
+  }
+}

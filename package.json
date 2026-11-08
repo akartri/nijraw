@@ -1,0 +1,14 @@
+{
+  "name": "nijraw",
+  "private": true,
+  "description": "Private, offline, non-AI photo editor with a self-contained HTML distribution",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node tools/check.mjs",
+    "check:release": "node tools/check-release.mjs",
+    "package:sources": "node tools/package-third-party-sources.mjs"
+  }
+}

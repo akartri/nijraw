@@ -1,0 +1,776 @@
+<!--
+NijRAW — GNU GPL version 3 licensing notice
+Copyright (C) 2026 Akartri.
+SPDX-License-Identifier: GPL-3.0-only (Akartri-owned application portions ONLY)
+
+The Akartri-owned original application source code, HTML interface and original
+styling in this document are free software: you may redistribute and/or modify
+them under the terms of the GNU General Public License, version 3, as published
+by the Free Software Foundation. No "or any later version" permission is granted.
+You should have received a copy of GNU GPLv3 with this software; a complete
+verbatim copy is embedded in this HTML as script#nijraw-gplv3-license.
+See https://www.gnu.org/licenses/gpl-3.0.html.
+
+This software is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for details.
+Your photographs, project content, and exported images remain yours; editing an
+image using NijRAW does not place that image under GNU GPLv3.
+
+SEPARATELY LICENSED MATERIAL — NOT RELICENSED BY THIS NOTICE:
+* LibRaw 0.22.3: LGPL-2.1 or CDDL-1.0, at the recipient's option. The LGPL
+  licensing path is relevant when combining it with GNU GPLv3 application code.
+  Source: https://github.com/LibRaw/LibRaw/tree/0.22.3
+* Offline HEIC/HEIF fallback decoder: rebuilt from libheif 1.23.7 and
+  libde265 1.1.3, both upstream LGPL-3.0-or-later. Exact tagged sources:
+  https://github.com/strukturag/libheif/tree/v1.23.7
+  https://github.com/strukturag/libde265/tree/v1.1.3
+  Generated with Emscripten SDK 4.0.8 / CMake 3.31.10, with just libde265
+  statically linked as the HEIC codec. The WebAssembly is included in the
+  JavaScript payload; no remote decoder loads. The separate companion archive
+  NijRAW_HEIC_Source_1.23.7.zip provides the exact source archives, build and
+  replacement scripts, applicable LGPL notices and checksum manifest.
+  The inlined payload SHA-256 (script text, excluding the script tags) is:
+  0a6c14c89cf584482324ec5ff3ecaf21672bf77a20f95e3c04e2f68823137e59
+* Lensfun-derived camera/lens measurements: CC BY-SA 3.0; transformed from the
+  Lensfun XML database to embedded JSON with model/alias/measurement selection.
+  Copyright the respective Lensfun contributors. Source:
+  https://github.com/lensfun/lensfun/tree/master/data/db
+  Terms: https://creativecommons.org/licenses/by-sa/3.0/
+* Guided-tour photograph "North Brofjorden at Sandvik - just lens" by W.carter (2017): CC0 1.0;
+  embedded JPEG redistributed under its original public-domain dedication.
+  Source: https://commons.wikimedia.org/wiki/File:North_Brofjorden_at_Sandvik_-_just_lens.jpg
+* Emscripten-generated runtime and other embedded third-party material remain
+  subject to their own copyright and license terms.
+
+Copies of LGPL-2.1 and LGPL-3.0 appear below as inert embedded license text.
+GPLv3 for the original application does NOT relicense third-party data/code.
+
+DISTRIBUTION STATUS: The bundled HEIC decoder is rebuilt from security-release
+libheif 1.23.7 and libde265 1.1.3, using an archived, documented toolchain.
+Distribute the matching NijRAW_HEIC_Source_1.23.7.zip with this HTML so that
+recipients have the exact LGPL corresponding source, build/replacement scripts,
+and notices. The HTML alone is not the complete redistribution package.
+Continue monitoring upstream security advisories and separately assess HEVC
+patent considerations as applicable; this is not a legal compliance warranty.
+
+No account, tracking or remote photo-processing endpoint is required to run
+this HTML; optional outbound information links are user-initiated.
+-->
+<!--
+NIJRAW STUDIO — SOURCE MAP (maintainer edition)
+
+This is deliberately ONE offline HTML document. Its source is arranged in
+execution-safe layers; generated decoder payloads are left untouched.
+
+  01. Head and design system          <style>__NIJRAW_STYLE_00__</style>
+<!-- Mathematical quality audit references:
+ Fritsch & Butland, SIAM J Sci Stat Comput 5 (1984), doi:10.1137/0905021 (tone curves).
+ IEC 61966-2-1 sRGB, https://registry.color.org/rgb-registry/srgb (gamma/exposure context).
+ W3C PNG Specification 3 (2025), https://www.w3.org/TR/png-3/ (lossless RGBA).
+ Other editor algorithms intentionally retained pending reference-image validation.
+-->
+</head>
+<!-- 02 / INTERFACE — declarative markup; JS handlers are defined below. -->
+<body>
+<input type="file" id="fileInput" accept="image/*,.nijraw,.heic,.heif,.cr2,.cr3,.nef,.arw,.orf,.rw2,.dng,.raf,.pef,.srw,.3fr,.mef,.mrw,.nrw,.rwl,.x3f,.iiq,.cap,.erf,.raw">
+<input type="file" id="recipeInput" accept=".json,application/json" style="display:none">
+<input type="file" id="lutInput" accept=".cube" style="display:none">
+<input type="file" id="batchInput" accept="image/*,.heic,.heif,.cr2,.cr3,.nef,.arw,.orf,.rw2,.dng,.raf,.pef,.srw,.3fr,.iiq,.crw,.raw,.rwl,.k25,.kdc,.mos,.mrw,.nrw,.erf,.mef" multiple style="display:none">
+
+
+<!-- TOPBAR -->
+<header id="topbar">
+  <div class="brand">
+    <span class="bname" id="bname" role="button" tabindex="0" aria-controls="pop" aria-expanded="false" title="Why the name NijRAW? Tap to read its meaning">Nij<i>RAW</i></span>
+    <div class="pop" id="pop" role="region" aria-label="Meaning of NijRAW"><div class="mn">“Nij” means “one’s own” — NijRAW is 100% private and local.</div></div>
+  </div>
+  <div class="sep sepm"></div>
+  <span class="priv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>100% Private · On-device</span>
+  <div class="sep sepm"></div>
+  <button class="btn accent" id="btnImport" onclick="pick()" aria-label="Import photo" title="Import photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span class="albl">Import</span></button>
+  <button class="btn" id="btnLibrary" aria-label="Open local photo library" title="Library: your photos, ratings and saved edits, all on this device" onclick="toggleLibrary()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><rect x="14" y="14" width="7" height="7" rx="1.4"/></svg><span class="albl">Library</span></button>
+  <span class="btn gpu-quick" data-gpu-status data-engine="…" role="status" aria-label="Rendering: checking GPU support" title="GPU acceleration is automatic; unavailable effects run safely on the CPU"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg><span class="gpu-mini-label" data-gpu-label>GPU Auto</span><span class="gpu-mini-dot" aria-hidden="true"></span></span>
+  <span class="prov-wrap" style="position:relative;display:inline-flex;flex-shrink:0">
+    <button id="provChip" class="prov p-rgb" style="display:none" title="Sensor settings — tap to change RAW decoding and camera colour profiles" aria-haspopup="dialog" aria-expanded="false" aria-controls="provPop mobileProvPop" onclick="toggleProvPop();event.stopPropagation()"><span class="pdot"></span><span id="provTxt">—</span><svg class="prov-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="pop provpop" id="provPop"></div>
+  </span>
+  <button type="button" class="btn btn-photo-close" id="btnNewSession" style="display:none" aria-label="Remove current photo from workspace" title="Remove current photo from workspace" onclick="openCloseDialog()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8.5 8.5l7 7m0-7l-7 7"/></svg><span>Remove photo</span></button>
+  <div class="spacer"></div>
+  <span id="fname"></span>
+  <button type="button" class="btn ic" id="btnMoreMobile" aria-label="Appearance, help and settings" aria-expanded="false" aria-controls="mobileMoreMenu" onclick="toggleMobileMore(event)" title="Appearance and help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.07.07-2.05 2.05-.08-.08a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1 1.57V21h-2.9v-.84a1.7 1.7 0 0 0-1-1.57 1.7 1.7 0 0 0-1.88.34l-.08.08-2.05-2.05.07-.07A1.7 1.7 0 0 0 7.3 15a1.7 1.7 0 0 0-1.57-1H4.9v-2.9h.83a1.7 1.7 0 0 0 1.57-1 1.7 1.7 0 0 0-.34-1.88l-.07-.08L8.94 6.1l.08.07a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1-1.57V4.1h2.9v.84a1.7 1.7 0 0 0 1 1.57 1.7 1.7 0 0 0 1.88-.34l.08-.07 2.05 2.05-.07.08a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.57 1h.83V14h-.83a1.7 1.7 0 0 0-1.57 1Z"/></svg></button>
+  <div id="mobileMoreMenu" role="group" aria-label="More editor options">
+    <div class="mobile-more-title">Settings &amp; help</div>
+    <button type="button" id="menuAppearanceBtn" onclick="closeMobileMore();toggleDark()" aria-label="Switch to dark appearance"><span class="menu-symbol" aria-hidden="true">☾</span><span data-appearance-label>Switch to dark appearance</span></button>
+    <button type="button" onclick="closeMobileMore();openHelp()"><span class="menu-symbol" aria-hidden="true">?</span> Help &amp; shortcuts</button>
+    <button type="button" id="mobileFullRawBtn" style="display:none" onclick="closeMobileMore();nijRequestFullRawDecode()"><span class="menu-symbol" aria-hidden="true">◉</span> Decode full RAW · 16-bit</button>
+    <button type="button" id="mobileRawSettingsBtn" onclick="closeMobileMore();toggleProvPop();event.stopPropagation()"><span class="menu-symbol" aria-hidden="true">◈</span> RAW / sensor settings</button>
+    <button type="button" onclick="closeMobileMore();NijPerformance.show()"><span class="menu-symbol" aria-hidden="true">◉</span> Rendering &amp; performance</button>
+    <div class="mobile-more-info" data-mobile-rendering>Rendering: checking browser support</div>
+    <div class="mobile-more-info" data-mobile-decode>100% private · On-device</div>
+    <div id="nijStorageState" class="mobile-more-info" role="status" style="font-size:.69rem;line-height:1.5">Session autosave: checking…</div>
+  </div>
+  <button type="button" class="btn ic" id="mobileHelpBtn" onclick="openHelp()" title="Help &amp; shortcuts" aria-label="Help and shortcuts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.5-2.8 4"/><line x1="12" y1="17.2" x2="12" y2="17.25"/></svg></button>
+  <button class="btn ic" id="btnHelp" onclick="openHelp()" title="Help &amp; how-to" aria-label="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.5-2.8 4"/><line x1="12" y1="17.2" x2="12" y2="17.25"/></svg></button>
+  <button type="button" class="btn ic" id="btnTheme" onclick="toggleDark()" title="Change appearance (light / dark)" aria-label="Change appearance"><svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.1 14.8A8.6 8.6 0 0 1 9.2 3.9 8.7 8.7 0 1 0 20.1 14.8Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></svg></button>
+  <div id="exportSlot" style="position:relative;flex-shrink:0">
+    <button class="btn primary" id="btnExport" disabled onclick="toggleExportPop()" title="Export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span class="elbl">Export</span></button>
+    <div id="expop">
+      <div class="epop-title">Choose an export</div>
+      <p class="hint" style="font-size:.74rem;margin:-3px 0 12px">Select a format to choose its file name, quality, colour and size. JPEG · sRGB works for everyday sharing.</p>
+      <div class="nij-batch-export" role="group" aria-label="Batch editing">
+        <strong>Batch editing</strong>
+        <p>Use this photo's current tone and colour edits on several others.</p>
+        <button type="button" class="btn accent" onclick="pickBatch()">Batch edit photos…</button>
+        <small>High-quality JPEG or lossless 16-bit PNG. Choose quality and file names before selecting photos. Crop, masks and lens corrections stay photo-specific.</small>
+      </div>
+      <!-- Internal export state is set by each format-specific Save dialog. -->
+      <div id="nijExportInternalDefaults" hidden style="display:none!important">
+      <div class="nij-filename-row"><label for="nijExportFilename">Default save name</label><input type="text" id="nijExportFilename" maxlength="160" autocomplete="off" spellcheck="false" placeholder="Use original photo name" aria-describedby="nijExportFilenameHelp"><p class="hint" id="nijExportFilenameHelp" style="font-size:.67rem;line-height:1.4;margin:0">Single-file dialogs let you rename each export separately.</p></div>
+      <div class="epop-row"><label for="qSel">Quality</label><select id="qSel" aria-label="Export quality"><option value="1">100%</option><option value="0.98" selected>98% · high quality</option><option value="0.92">92%</option><option value="0.85">85%</option><option value="0.75">75%</option></select></div>
+      <div class="epop-row"><label for="csSel">Colour</label><select id="csSel" aria-label="Export colour"><option value="srgb" selected>sRGB (standard)</option><option value="p3">Display P3 (wide)</option></select></div>
+      <div class="epop-row"><label for="szSel">Resolution</label><select id="szSel" aria-label="Export pixel resolution" onchange="nijSyncExportResolution()"><option value="0" selected>Full resolution · all pixels</option><option value="3840">3840 px long edge, 4K</option><option value="2048">2048 px, web / email</option><option value="1080">1080 px, social</option><option value="2560">2560 px, large web</option><option value="1600">1600 px, sharing</option><option value="-1">Custom long edge…</option><option value="-2">Percentage…</option></select></div>
+      <p class="hint" id="nijExportSizeDetail" role="status" style="font-size:.69rem;line-height:1.5;margin:-2px 0 10px">Full resolution retains every decoded pixel. JPEG file size in MB depends on compression, not pixel dimensions.</p>
+      <div id="nijHalfResNotice" class="nij-resolution-notice" role="status" hidden><strong>Your photo is in fast mode</strong><span id="nijHalfResDetail">Export uses the pixels currently loaded. For maximum sensor detail, you can load the full RAW.</span><button type="button" class="btn" onclick="nijRequestFullRawDecode()">Load full sensor detail</button><small>Full sensor detail uses more memory and may be unavailable on this device.</small></div>
+      <div class="epop-row" id="nijExportCustomRow" hidden><label for="nijExportCustom">Custom / %</label><input id="nijExportCustom" type="number" min="1" max="60000" step="1" value="2400" oninput="nijSyncExportResolution()" style="width:92px;max-width:45%;height:34px;padding:5px;border:1px solid var(--line2);border-radius:7px;background:var(--card)" aria-label="Custom long edge pixels or percentage"></div>
+      <div class="epop-row"><label for="metaChk">Include EXIF / location</label><input type="checkbox" id="metaChk" title="Off by default for safe sharing. Check to include camera data, capture time, and any GPS location in JPEG, WebP and TIFF exports." style="width:16px;height:16px;accent-color:var(--clay);cursor:pointer;flex:0 0 auto"></div>
+      <p class="hint" style="font-size:.68rem;margin:-3px 0 8px">Off by default to protect location privacy when sharing.</p>
+      </div>
+      <div class="epop-btns">
+        <button class="btn primary" onclick="nijOpenSingleExportDialog('jpeg')">JPEG · share</button>
+        <button class="btn" onclick="nijOpenSingleExportDialog('png')" title="Choose save settings; full-size PNG uses 16-bit lossless encoding">PNG · lossless</button>
+      </div>
+      <div class="epop-btns" id="modernFmtBtns" style="margin-top:6px"></div>
+      <div class="epop-btns" style="margin-top:6px">
+        <button class="btn" onclick="nijOpenSingleExportDialog('tiff8')" title="Choose name, colour and resolution for uncompressed 8-bit TIFF">TIFF · 8-bit</button>
+        <button class="btn" onclick="nijOpenSingleExportDialog('tiff16')" title="Choose name and colour for a full-resolution 16-bit TIFF">TIFF · 16-bit</button>
+        <button class="btn" onclick="nijOpenSingleExportDialog('tiff32')" title="Configure a full-size 32-bit float linear Rec.2020 TIFF">TIFF · 32-bit linear RAW</button>
+      </div>
+      <div id="tiff16note" style="font-size:.62rem;color:var(--muted2);margin:4px 0 0;line-height:1.45"></div>
+      <details class="nij-export-more"><summary>More settings · sharpening &amp; copyright</summary>
+        <div class="epop-row"><label for="nijOutSharp">Output sharpening</label><select id="nijOutSharp" title="Extra sharpening appropriate to final saved pixel dimensions"><option value="0" selected>Off</option><option value="1">Screen</option><option value="2">Print</option></select></div>
+        <div class="epop-row"><label for="nijCopyright">Copyright metadata</label><input id="nijCopyright" type="text" maxlength="96" placeholder="© Name / studio" style="min-width:90px;max-width:65%;height:34px;padding:5px 7px;border:1px solid var(--line2);border-radius:7px;background:var(--card)" aria-label="Optional copyright metadata text"></div>
+        <p class="hint" style="margin:4px 0 0;font-size:.66rem">Optional metadata only. No visible watermark is added to the image.</p>
+      </details>
+      <div class="epop-sep"></div>
+      <div style="font-size:.66rem;color:var(--muted2);margin:0 0 6px;line-height:1.4">Keep everything editable:</div>
+      <div class="epop-btns">
+        <button class="btn primary" onclick="exportProject();closeExportPop()" title="Save a .nijraw project file, the untouched original photo plus every edit, mask and adjustment. Open it later to continue exactly where you left off.">Save project (.nijraw)</button>
+      </div>
+      <div style="font-size:.7rem;color:var(--muted2);margin:4px 0 0;line-height:1.4">One file with the <b>original photo + all your edits</b>, still fully adjustable. Import it to resume editing. The original's metadata, including any GPS coordinates, is preserved in the project.</div>
+      <details class="nij-export-more"><summary>Reuse your edit settings</summary>
+        <div class="epop-btns">
+          <button class="btn" onclick="exportRecipe()" title="Save your adjustments as a file to use on another photo">Save My Edit Settings</button>
+          <button class="btn" onclick="pickRecipe()" title="Use edit settings you previously saved">Apply Saved Settings</button>
+        </div>
+      </details>
+    </div>
+  </div>
+  <button type="button" class="btn ic" id="mobileGearBtn" onclick="toggleMobileMore(event)" aria-label="Settings and help" aria-expanded="false" aria-controls="mobileMoreMenu" aria-haspopup="true" title="Settings and help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h8M17 7h4M3 17h2M11 17h10"/><circle cx="14" cy="7" r="3"/><circle cx="8" cy="17" r="3"/></svg></button>
+</header>
+<div class="pop provpop" id="mobileProvPop" role="dialog" aria-label="RAW sensor and camera profile settings" aria-modal="false"></div>
+
+<!-- ACTION BAR (below topbar, all screens) -->
+<div id="toolstrip" role="group" aria-label="Editing tools">
+<div id="actionbar">
+  <button type="button" class="abtn ic2 nb" id="btnSaveEdits" style="display:none" disabled onclick="saveCurrentEdits()" title="Save edits locally (Ctrl/⌘+S); Export → Save project for a portable backup" aria-label="Save edits locally in this browser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h14l3 3v15H3V3h1Z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/></svg></button>
+  <button class="abtn ic2 nb" id="btnUndo" data-undo disabled onclick="undo()" title="Undo (Ctrl/⌘+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-1"/></svg></button>
+  <button class="abtn ic2 nb" id="btnRedo" data-redo disabled onclick="redo()" title="Redo (Ctrl/⌘+Shift+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h1"/></svg></button>
+  <button type="button" class="abtn ic2 nb" id="btnTwoLooks" disabled onclick="NijTwoLooks.toggle()" aria-expanded="false" aria-controls="nijTwoLooksPanel" aria-label="Try Two Looks" title="Try Two Looks: compare two edits of this photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M12 5v14"/><text x="7.1" y="15" font-size="7.6" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">A</text><text x="16.8" y="15" font-size="7.6" font-weight="800" text-anchor="middle" fill="currentColor" stroke="none">B</text></svg></button>
+  <button type="button" class="abtn ic2 nb" id="btnLensQuickOff" onclick="setLensCorrectionEnabled(false)" title="Turn off lens corrections to resume responsive editing; your selected Lensfun profile is kept" aria-label="Turn off lens corrections"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M5.5 18.5 18.5 5.5"/></svg></button>
+  <button type="button" class="abtn mobile-photo-close" id="btnCloseMobile" style="display:none" aria-label="Remove photo from workspace" title="Remove this photo from the workspace (your Library photos stay saved)" onclick="openCloseDialog()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6m0-6l-6 6"/></svg><span>Remove photo</span></button>
+  <span class="tool-divider" aria-hidden="true"></span>
+  <button class="abtn ic2 nb" id="btnCrop" disabled onclick="startCrop()" title="Crop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg></button>
+  <div class="rotwrap" style="position:relative;flex-shrink:0">
+    <button class="abtn nb tb" id="btnRotate" disabled onclick="toggleRotatePop()" title="Rotate &amp; straighten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg><span class="lbl">Rotate</span></button>
+    <div id="rotpop">
+      <div class="epop-title">Rotate &amp; straighten</div>
+      <div class="rot-srow"><div class="rot-slabel"><span>Angle</span><span class="rot-degwrap"><input type="number" id="rotDegInput" class="rot-deginput" value="0" step="0.1" min="-45" max="45" inputmode="decimal" aria-label="Angle in degrees" oninput="onRotDegInput(this.value)" onblur="onRotDegCommit()" onkeydown="if(event.key==='Enter')this.blur()"><span class="rot-degsuffix">°</span></span></div>
+        <input type="range" id="rotSlider" min="-45" max="45" step="0.1" value="0" oninput="onRotSlide(this.value)" onchange="onRotDegCommit()">
+        <div class="rot-ticks"><span>−45</span><span>−22.5</span><span>0</span><span>22.5</span><span>45</span></div>
+        <p class="nij-slider-lesson">Levels a tilted horizon; adjust gently when the image feels unintentionally slanted.</p>
+      </div>
+      <div class="rot-quick">
+        <button class="tl" onclick="nudgeRot(-90)" title="Rotate 90° left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-1"/></svg>90° L</button>
+        <button class="tl" onclick="nudgeRot(90)" title="Rotate 90° right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h1"/></svg>90° R</button>
+        <button class="tl" onclick="flipH()" title="Flip horizontal">Flip H</button>
+        <button class="tl" onclick="flipV()" title="Flip vertical">Flip V</button>
+      </div>
+      <button class="tl" style="width:100%;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="nijAutoUpright();closeRotatePop()" title="Uses on-device Hough line detection to level and correct converging edges; check the result"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><path d="M3 15l18-6"/><path d="M3 9v0M21 15v0"/><circle cx="12" cy="12" r="9" opacity=".35"/></svg>Auto Upright · lines</button>
+      <button class="tl rot-reset" onclick="resetRotation()">Reset rotation</button>
+    </div>
+  </div>
+  <div class="rotwrap" style="position:relative;flex-shrink:0">
+    <button class="abtn nb tb" id="btnAuto" disabled onclick="toggleAutoPop()" title="Auto Enhance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span class="lbl">Auto</span></button>
+    <div id="autopop">
+      <div class="epop-title">Auto enhance</div>
+      <div class="auto-orow"><label>Orientation</label>
+        <div class="seg" style="margin-top:6px">
+          <button class="tl on" data-aorient="auto" onclick="setAutoOrient('auto')">Auto</button>
+          <button class="tl" data-aorient="portrait" onclick="setAutoOrient('portrait')">Portrait</button>
+          <button class="tl" data-aorient="landscape" onclick="setAutoOrient('landscape')">Landscape</button>
+        </div>
+      </div>
+      <div class="auto-irow"><div class="rot-slabel"><span>Intensity</span><span class="rot-sval" id="autoIntVal">25%</span></div>
+        <input type="range" id="autoIntSlider" min="10" max="100" step="1" value="25" oninput="setAutoIntensity(this.value)" onchange="Assist.finishStrength()">
+        <p class="nij-slider-lesson">Blends Auto improve with the original; reduce it when the result looks too strong.</p>
+      </div>
+      <button class="btn accent" data-auto-topbutton style="width:100%;height:36px;margin-top:4px" onclick="Assist.autoToggle();closeAutoPop()">Auto improve</button>
+      <p class="hint" style="margin:8px 0 0;font-size:.66rem">Tone, colour, gentle Clarity and Sharpness. Uses fixed on-device rules, not AI. Tap again to undo.</p>
+    </div>
+  </div>
+  <div class="rotwrap" style="position:relative;flex-shrink:0">
+    <button class="abtn nb tb" id="btnDenoise" disabled onclick="toggleDenoisePop()" title="Denoise (hybrid VST + low-rank)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg><span class="lbl">Denoise</span></button>
+    <div id="denoisepop">
+      <div class="epop-title">Denoise: Hybrid pipeline</div>
+      <p class="hint" style="margin:0 0 10px;font-size:.72rem">Variance-stabilised, structure-aware noise reduction: the local noise covariance is measured, patches are matched by Mahalanobis distance with a statistical gate that keeps real texture out of groups, cleaned with low-rank shrinkage across pyramid levels, and a confidence map protects detail. Runs off the main thread.</p>
+      <div class="seg" style="margin-bottom:10px">
+        <button class="tl" data-dnpreset="0" onclick="setDenoiseQuick(0)">Off</button>
+        <button class="tl" id="dnAutoBtn" onclick="autoDenoise()" title="Estimate a suitable amount from this photo's noise">Auto</button>
+      </div>
+      <div class="auto-irow"><div class="rot-slabel"><span>Denoise strength</span><span class="rot-sval" id="denoiseVal">0</span></div>
+        <input type="range" id="denoiseSlider" min="0" max="100" step="1" value="0" oninput="setDenoiseQuick(this.value,true)" onchange="setDenoiseQuick(this.value,false)">
+        <p class="nij-slider-lesson">Reduces grain from low light or high ISO; check fine details at 1:1 before increasing it.</p>
+      </div>
+      <div class="auto-irow" title="Colour-noise reduction: cleans blotchy colour independently of luminance detail. 100 gives fully clean colour without softening the image."><div class="rot-slabel"><span>Colour noise</span><span class="rot-sval" id="denoiseColorVal">100</span></div>
+        <input type="range" id="denoiseColorSlider" min="0" max="100" step="1" value="100" oninput="setDenoiseColor(this.value,true)" onchange="setDenoiseColor(this.value,false)">
+        <p class="nij-slider-lesson">Reduces coloured speckles in dark areas; use it when noise looks red, green or purple.</p>
+      </div>
+      <button type="button" class="tl" style="width:100%;min-height:36px;margin-top:9px" onclick="NijPixelView.open()" title="Inspect source pixels at 1:1. The view stays frozen during slider movement and refreshes when released.">Inspect noise at 1:1</button>
+      <p class="hint" id="denoiseBusyMsg" style="display:none;margin:8px 0 0;font-size:.7rem;color:var(--gold)">Computing preview…</p>
+    </div>
+  </div>
+  <span class="tool-divider" aria-hidden="true"></span>
+  <button class="abtn ic2 nb" id="btnHold" data-holdbtn disabled onpointerdown="HoldCompare.show()" onpointerup="HoldCompare.hide()" onpointerleave="HoldCompare.hide()" onpointercancel="HoldCompare.hide()" oncontextmenu="return false" title="Press and hold to see the original (\ key)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.7"/></svg></button>
+  <button class="abtn ic2 nb" id="btnSplit" data-splitbtn disabled onclick="toggleSplitCompare()" title="Split compare (before / after)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><path d="M12 8l-3 4 3 4" opacity=".5"/></svg></button>
+  <button class="abtn ic2 nb" id="btnHistPick" data-histmode="off" disabled onclick="cycleHistoPick()" title="Set black / white point on the histogram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M5 20V9M10 20V5M15 20v-7M20 20v-4"/></svg></button>
+  <span class="tool-divider" aria-hidden="true"></span>
+  <button class="abtn ic2 nb" id="btnHistory" disabled onclick="toggleHistoryPanel()" title="Edit history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg></button>
+  <button class="abtn nb" id="btnReset" disabled onclick="resetAll()" title="Restore the uploaded image's original dimensions and orientation; baked geometry may need a fresh decode" aria-label="Restore uploaded photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span class="lbl">Reset All</span></button>
+  <button class="abtn cb" data-cropbar style="display:none" onclick="applyCrop()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Apply Crop</button>
+  <button class="abtn cb" data-cropbar style="display:none" onclick="cancelCrop()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>Cancel</button>
+</div>
+<button id="toolstrip-chevron" class="toolstrip-chevron" type="button" aria-label="Show more editing tools" title="More tools — tap or swipe toolbar" hidden>
+  <span class="toolstrip-chevron-text">More</span>
+  <svg class="toolstrip-chevron-svg" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+</button>
+</div>
+
+<!-- CROP RATIO ROW (only visible during cropping) -->
+<div id="cropratios"></div>
+
+<!-- LIBRARY — persistent on-device catalogue -->
+<input type="file" id="libAddInput" accept="image/*,.heic,.heif,.cr2,.cr3,.nef,.arw,.orf,.rw2,.dng,.raf,.pef,.srw,.3fr,.mef,.mrw,.nrw,.rwl,.x3f,.iiq,.cap,.erf,.raw" multiple style="display:none">
+<div id="libview" role="region" aria-label="Photo library">
+  <div class="libbar">
+    <span class="libtitle">Library</span>
+    <span id="libCount"></span>
+    <input type="search" placeholder="Search name, camera, lens…" oninput="Lib.setQ(this.value)" aria-label="Search library">
+    <select onchange="Lib.setMinRating(this.value)" title="Minimum rating" aria-label="Minimum rating">
+      <option value="0">Any rating</option><option value="1">★+</option><option value="2">★★+</option><option value="3">★★★+</option><option value="4">★★★★+</option><option value="5">★★★★★</option>
+    </select>
+    <select onchange="Lib.setFlagFilter(this.value)" title="Flag filter" aria-label="Flag filter">
+      <option value="">All flags</option><option value="pick">Picks</option><option value="reject">Rejects</option><option value="unflagged">Unflagged</option>
+    </select>
+    <select id="libAlbum" onchange="Lib.setAlbumFilter(this.value)" title="Album" aria-label="Album"><option value="">All photos</option></select>
+    <select onchange="Lib.setSort(this.value)" title="Sort" aria-label="Sort">
+      <option value="added-desc">Newest added</option><option value="added-asc">Oldest added</option>
+      <option value="captured-desc">Capture date</option><option value="edited-desc">Recently edited</option>
+      <option value="rating-desc">Rating</option><option value="name-asc">Name</option>
+    </select>
+    <button class="btn accent" onclick="document.getElementById('libAddInput').click()">Add photos</button>
+    <button class="btn" onclick="Lib.selectAll()" title="Select all shown / clear selection">Select all</button>
+    <button class="btn" data-needsel disabled onclick="Lib.addSelToAlbum()" title="Add the selected photos to the chosen album (or create one)">Album…</button>
+    <button class="btn" data-needsel disabled onclick="Lib.newAlbumFlow()" style="display:none">New album</button>
+    <button class="btn" data-needsel disabled onclick="nijOpenBatchDialog('library')" title="Export selected photos with their own saved edits; choose format, quality and file names">Export selected</button>
+    <button class="btn" data-needsel disabled onclick="Lib.removeSelected()" title="Remove selected photos from the library">Remove</button>
+    <span id="libSelInfo"></span>
+    <span id="libStorage"></span>
+    <button class="btn ic" onclick="Lib.closeLibrary()" title="Close library (Esc)" aria-label="Close library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div id="nijGuideLibraryHint" class="nij-guide-libreturn" role="status" hidden>Guided first edit · Step 10 of 11: Click the highlighted <b>Library</b> button in the top bar again to return to the main editor and continue to Remove photo.</div>
+  <div id="libgrid" tabindex="0" aria-label="Photo grid"></div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="stage">
+    <div id="nijTwoLooksPanel" role="region" aria-label="Try Two Looks controls" aria-hidden="true">
+      <div class="nij-two-actions">
+        <button type="button" id="nijTwoA" onclick="NijTwoLooks.select('A')" aria-pressed="false" aria-label="Edit Look A" title="Edit Look A">A</button>
+        <button type="button" id="nijTwoB" onclick="NijTwoLooks.select('B')" aria-pressed="false" aria-label="Edit Look B" title="Edit Look B">B</button>
+        <button type="button" id="nijTwoCompare" onclick="NijTwoLooks.compare()" aria-pressed="false" title="See both complete photos side by side">Compare</button>
+        <button type="button" id="nijTwoKeepA" class="nij-two-primary" onclick="NijTwoLooks.keep('A')" title="Finish with Look A">Keep A</button>
+        <button type="button" id="nijTwoKeepB" class="nij-two-primary" onclick="NijTwoLooks.keep('B')" title="Finish with Look B">Keep B</button>
+        <button type="button" class="nij-two-close" onclick="NijTwoLooks.close()" aria-label="Hide Two Looks controls" title="Hide controls; both looks remain available">×</button>
+      </div>
+    </div>
+    <div id="nijTwoCompareView" role="region" aria-label="Side by side comparison of Look A and Look B" aria-hidden="true">
+      <figure class="nij-two-photo"><figcaption>Look A</figcaption><canvas id="nijTwoPreviewA" aria-label="Look A preview"></canvas></figure>
+      <figure class="nij-two-photo"><figcaption>Look B</figcaption><canvas id="nijTwoPreviewB" aria-label="Look B preview"></canvas></figure>
+    </div>
+    <div id="drop">
+      <div class="welcome">
+        <h1 class="dtit">Photo editing, at your pace.</h1>
+        <p class="dsub">A complete editor for beginners and curious photographers. Tap <b>Import</b> above to begin.</p>
+        <div class="nij-welcome-actions">
+          <button type="button" class="nij-sample-launch" onclick="nijOpenSamplePhoto()" title="Practice with an offline sample photo and a short guided edit">Try a guided edit <span aria-hidden="true">→</span></button>
+        </div>
+        <p class="nij-welcome-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Your photos stay on this device.</p>
+      </div>
+    </div>
+    <canvas id="cv"></canvas>
+    <div id="badge">Preview · full-res on export</div>
+    <div id="mobileStatusPills" role="group" aria-label="Rendering and RAW sensor status">
+      <span id="mobileGpuPill" class="prov" role="status" aria-label="Rendering status: checking GPU support" title="Automatic GPU acceleration, with CPU fallback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg><span id="mobileGpuText">GPU</span></span>
+    <button type="button" id="mobileProvChip" class="prov p-rgb" hidden aria-label="RAW sensor status and settings" aria-controls="mobileProvPop" onclick="toggleProvPop();event.stopPropagation()"><span class="pdot"></span><span id="mobileProvTxt">Sensor · 16-bit</span></button>
+    </div>
+    <div id="zoomctl">
+      <button type="button" class="zc-pan" data-zcpan aria-label="Grab tool: drag photo only when enabled" aria-pressed="false" title="Grab tool — enable to drag the photo" onclick="togglePanMode()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M6 14v-1a2 2 0 0 0-4 0v2a8 8 0 0 0 8 8h2a8 8 0 0 0 8-8v-3a2 2 0 0 0-4 0"/></svg></button>
+      <span class="zc-sep"></span>
+      <button type="button" title="Zoom out" onclick="zoomStep(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button type="button" class="zc-pct" data-zcpct title="Reset zoom and pan" aria-label="Reset zoom and pan" onclick="resetCvView()">100%</button>
+      <button type="button" title="Zoom in" onclick="zoomStep(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><line x1="12" y1="5" x2="12" y2="19"/></svg></button>
+    </div>
+    <div id="cropov"><div id="croprect"><div class="gl v1"></div><div class="gl v2"></div><div class="gl h1"></div><div class="gl h2"></div><div class="ch tl" data-h="tl"></div><div class="ch tr" data-h="tr"></div><div class="ch bl" data-h="bl"></div><div class="ch br" data-h="br"></div></div></div>
+    <div id="regionov"><div id="regionrect"><span class="rg-hint">Detection region</span><div class="ch tl" data-rh="tl"></div><div class="ch tr" data-rh="tr"></div><div class="ch bl" data-rh="bl"></div><div class="ch br" data-rh="br"></div></div></div>
+    <div id="focusov"></div>
+    <canvas id="brushov"></canvas>
+    <canvas id="maskerov"></canvas>
+    <canvas id="maskov"></canvas>
+    <div id="straightenov"><div class="sg v" style="left:20%"></div><div class="sg v" style="left:40%"></div><div class="sg v mid" style="left:50%"></div><div class="sg v" style="left:60%"></div><div class="sg v" style="left:80%"></div><div class="sg h" style="top:20%"></div><div class="sg h" style="top:40%"></div><div class="sg h mid" style="top:50%"></div><div class="sg h" style="top:60%"></div><div class="sg h" style="top:80%"></div></div>
+    <div id="geoov"><svg><line class="geo-axis" stroke="#fff" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.85"/><ellipse class="geo-ell" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.85"/></svg></div>
+    <div id="detspin"><div class="ring"></div><div class="lbl">Detecting subject…</div></div>
+    <div id="historyPanel" style="display:none"><div class="hist-head">History<button class="hist-close" onclick="toggleHistoryPanel()">✕</button></div><div id="historyList"></div></div>
+  </div>
+
+  <aside id="panel">
+    <nav class="tabs" id="dtabs">
+      <div class="tab on" data-tab="quick" role="tab" tabindex="0" aria-selected="true">Quick</div>
+      <div class="tab" data-tab="advanced" role="tab" tabindex="0" aria-selected="false">Advanced</div>
+      <div class="tab" data-tab="subject" role="tab" tabindex="0" aria-selected="false">Subject</div>
+      <div class="tab" data-tab="retouch" role="tab" tabindex="0" aria-selected="false">Retouch</div>
+      <div class="tab" data-tab="insights" role="tab" tabindex="0" aria-selected="false">Insights</div>
+    </nav>
+    <div class="body">
+      <div class="pane on" data-pane="quick"></div>
+      <div class="pane" data-pane="advanced"></div>
+      <div class="pane" data-pane="subject"></div>
+      <div class="pane" data-pane="retouch"></div>
+      <div class="pane" data-pane="insights"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- Self-contained GPLv3 and third-party licensing disclosure. -->
+<dialog id="nijLicenseDialog" class="nij-license-dialog" aria-labelledby="nijLicenseTitle" aria-describedby="nijLegalIntro">
+  <div class="nij-legal-shell">
+    <header class="nij-legal-head">
+      <div class="nij-legal-identity">
+        <span class="nij-legal-eyebrow">Copyright © 2026 Akartri · Licensing</span>
+        <h2 id="nijLicenseTitle">NijRAW's original application code is GPLv3</h2>
+      </div>
+      <button type="button" class="nij-legal-close" aria-label="Close licensing information" title="Close" onclick="document.getElementById('nijLicenseDialog').close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="nij-legal-body">
+      <section class="nij-legal-intro">
+        <p id="nijLegalIntro">The Akartri-owned application code and interface of NijRAW are licensed under the <strong>GNU General Public License, version 3 only (GPL-3.0-only)</strong>. You may run, study, copy, modify and redistribute that code under GPLv3's conditions, including for commercial purposes. Your photographs, project files and exported images remain yours and are not placed under GPLv3 by using this editor.</p>
+        <p>NijRAW is provided <strong>without warranty</strong> as described in GPLv3. The full GPLv3 license is embedded in this HTML file and can be saved without internet access.</p>
+      </section>
+      <section>
+        <h3>Separately licensed third-party components</h3>
+        <ul class="nij-legal-deps">
+          <li><strong>LibRaw 0.22.3</strong> LGPL-2.1 or CDDL-1.0 (dual-licensed); <a href="https://github.com/LibRaw/LibRaw/tree/0.22.3" target="_blank" rel="noopener noreferrer">upstream source</a>.</li>
+          <li><strong>Offline HEIC/HEIF decoder (LGPL-3.0-or-later)</strong> Rebuilt from <a href="https://github.com/strukturag/libheif/tree/v1.23.7" target="_blank" rel="noopener noreferrer">libheif 1.23.7</a> (© Struktur AG and Dirk Farin) and <a href="https://github.com/strukturag/libde265/tree/v1.1.3" target="_blank" rel="noopener noreferrer">libde265 1.1.3</a> (© Struktur AG and Dirk Farin). The decoder is used only if native HEIC support is unavailable; all decoding stays on your device.</li>
+          <li><strong>Lensfun-derived database</strong> © Lensfun contributors, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>. Adapted from <a href="https://github.com/lensfun/lensfun/tree/master/data/db" target="_blank" rel="noopener noreferrer">upstream Lensfun XML</a> into selected JSON profiles. It is not relicensed under GPLv3.</li>
+          <li><strong>Guided sample photograph — North Brofjorden at Sandvik</strong> by W.carter (2017), <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0 1.0</a>. <a href="https://commons.wikimedia.org/wiki/File:North_Brofjorden_at_Sandvik_-_just_lens.jpg" target="_blank" rel="noopener noreferrer">Image source</a>. The camera image was deliberately left unprocessed by its photographer.</li>
+          <li><strong>Emscripten-generated code and other bundled components</strong> Retain their own applicable terms and notices.</li>
+        </ul>
+      </section>
+      <section class="nij-legal-note">
+        <h3>HEIC decoder provenance and security</h3>
+        <p>Updated to the upstream security releases available on 3 November 2026. The bundled WebAssembly decoder uses only libde265 as its HEIC codec. No extra browser permission, network decoder download, or photo upload is needed.</p>
+        <details class="nij-legal-provenance">
+          <summary>View exact source and build details</summary>
+          <p><strong>Build:</strong> libheif 1.23.7 + libde265 1.1.3, unchanged upstream source tag archives, compiled with Emscripten 4.0.8 and CMake 3.31.10. Only the HEIC decoder backend is linked. The generated module and checksum can be checked against the accompanying source package.</p>
+          <p><strong>Source and LGPL rebuild materials:</strong> <code>NijRAW_HEIC_Source_1.23.7.zip</code> is distributed separately alongside this HTML. It includes the source archives, scripts, license notices and checksums; retain it when sharing NijRAW.</p>
+          <p><strong>Inline decoder SHA-256:</strong> <code class="nij-legal-hash">0a6c14c89cf584482324ec5ff3ecaf21672bf77a20f95e3c04e2f68823137e59</code></p>
+        </details>
+      </section>
+      <section>
+        <h3>Download full license texts</h3>
+        <p>These complete license copies are included in NijRAW and can be saved offline.</p>
+        <div class="nij-legal-download-grid">
+          <button type="button" class="btn nij-legal-download" onclick="nijDownloadLicenseText('nijraw-gplv3-license','GPL-3.0.txt')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4l4 4 4-4M4 17v4h16v-4"/></svg>GPLv3</button>
+          <button type="button" class="btn nij-legal-download" onclick="nijDownloadLicenseText('nijraw-lgpl21-license','LGPL-2.1.txt')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4l4 4 4-4M4 17v4h16v-4"/></svg>LGPL 2.1</button>
+          <button type="button" class="btn nij-legal-download" onclick="nijDownloadLicenseText('nijraw-lgpl3-license','LGPL-3.0.txt')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4l4 4 4-4M4 17v4h16v-4"/></svg>LGPL 3.0</button>
+        </div>
+      </section>
+      <section class="nij-legal-note">
+        <h3>Corresponding source and redistribution</h3>
+        <p><strong>Include the companion source package.</strong> The HTML and matching <code>NijRAW_HEIC_Source_1.23.7.zip</code> belong together for distribution. The archive provides the exact LGPL source and rebuild/replacement instructions; the full GPLv3 and LGPLv3 texts are here in the editor. Keep the package available to recipients, monitor future security advisories, and consider any applicable HEVC patent obligations separately.</p>
+      </section>
+      <section>
+        <h3>Private and offline</h3>
+        <p>The editor runs as a single local HTML file. Editing does not require a user account, online repository, photo upload or telemetry service. Optional external documentation links are opened only when selected.</p>
+      </section>
+    </div>
+    <footer class="nij-legal-footer">
+      <span class="nij-legal-footnote">Private by design · Runs on your device</span>
+      <button type="button" class="btn primary" onclick="document.getElementById('nijLicenseDialog').close()">Close</button>
+    </footer>
+  </div>
+</dialog>
+
+<!-- MOBILE SHEET -->
+<div id="sheet" class="col">
+  <div id="grip" role="button" tabindex="0" aria-label="Expand or collapse editing controls" aria-expanded="false"><span class="gp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.2" fill="var(--cream)"/><circle cx="15" cy="12" r="2.2" fill="var(--cream)"/><circle cx="10" cy="17" r="2.2" fill="var(--cream)"/></svg>Adjustments</span></div>
+  <nav class="sheet-tabs" id="stabs" role="tablist" aria-label="Editing panels">
+    <div class="tab on" data-tab="quick" role="tab" tabindex="0" aria-selected="true">Quick</div>
+    <div class="tab" data-tab="advanced" role="tab" tabindex="0" aria-selected="false">Advanced</div>
+    <div class="tab" data-tab="subject" role="tab" tabindex="0" aria-selected="false">Subject</div>
+    <div class="tab" data-tab="retouch" role="tab" tabindex="0" aria-selected="false">Retouch</div>
+    <div class="tab" data-tab="insights" role="tab" tabindex="0" aria-selected="false">Insights</div>
+  </nav>
+  <div id="sbody"></div>
+
+</div>
+
+<!-- CLOSE PHOTO DIALOG -->
+<dialog id="nijQuadDialog" aria-labelledby="nijQuadTitle" aria-describedby="nijQuadHelp">
+  <h3 id="nijQuadTitle">Four-corner perspective</h3>
+  <p id="nijQuadHelp">Drag the four blue corners to straighten converging edges. The final frame crops inward automatically to avoid empty wedges.</p>
+  <div class="nij-quad-preview"><div class="nij-quad-image" id="nijQuadImage"><canvas id="nijQuadCanvas" aria-label="Photo used to position four perspective corners"></canvas>
+    <div class="nij-quad-layer" id="nijQuadLayer">
+      <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"><polygon id="nijQuadPolygon" fill="rgba(63,108,214,.10)" stroke="#f5f7ff" stroke-width="4" stroke-dasharray="16 9" points="0,0 1000,0 1000,1000 0,1000"/></svg>
+      <button type="button" class="nij-quad-handle" data-nij-corner="0" aria-label="Top left corner">1</button>
+      <button type="button" class="nij-quad-handle" data-nij-corner="1" aria-label="Top right corner">2</button>
+      <button type="button" class="nij-quad-handle" data-nij-corner="2" aria-label="Bottom right corner">3</button>
+      <button type="button" class="nij-quad-handle" data-nij-corner="3" aria-label="Bottom left corner">4</button>
+    </div></div></div>
+  <div class="nij-quad-actions"><button type="button" class="btn" onclick="NijQuad.reset()">Reset corners</button><button type="button" class="btn" onclick="NijQuad.close()">Cancel</button><button type="button" class="btn primary" onclick="NijQuad.apply()">Apply &amp; crop</button></div>
+</dialog>
+
+<!-- CLOSE PHOTO DIALOG -->
+<div id="closeDialog" style="display:none;position:fixed;inset:0;z-index:800;align-items:center;justify-content:center;padding:24px;background:rgba(36,26,16,.45);backdrop-filter:blur(6px)">
+  <div style="background:var(--card);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--sh2);max-width:320px;width:100%;padding:28px 24px 20px;display:flex;flex-direction:column;gap:8px">
+    <p style="font-family:var(--d);font-size:1.25rem;font-weight:400;color:var(--ink);line-height:1.2">Remove this photo from the workspace?</p>
+    <p style="font-size:.84rem;color:var(--muted);line-height:1.6;margin-bottom:12px">The active photo and its workspace history will close. Photos and edits saved in your Library remain available. Unsaved workspace changes may be lost.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" data-close-cancel onclick="closeCloseDialog()" style="min-width:80px">Cancel</button>
+      <button class="btn accent" onclick="closeCloseDialog();newSession()" style="min-width:80px">Remove photo</button>
+    </div>
+  </div>
+</div>
+
+<dialog id="nijBatchDialog" class="nij-batch-dialog" aria-labelledby="nijBatchTitle" aria-describedby="nijBatchDesc">
+  <h3 id="nijBatchTitle">Batch edit photos</h3>
+  <p id="nijBatchDesc">Apply your current tone and colour edits to several photos.</p>
+  <label for="nijBatchFormat">File format</label>
+  <select id="nijBatchFormat" onchange="nijSyncBatchFormat()">
+    <option value="image/jpeg">JPEG · 8-bit, adjustable quality</option>
+    <option value="image/png">PNG · 16-bit, lossless</option>
+  </select>
+  <div id="nijBatchQualityRow">
+    <label for="nijBatchQuality">JPEG quality</label>
+    <select id="nijBatchQuality">
+      <option value="1">100% · maximum JPEG quality</option>
+      <option value="0.98" selected>98% · high quality</option>
+      <option value="0.92">92% · smaller files</option>
+      <option value="0.85">85%</option>
+      <option value="0.75">75%</option>
+    </select>
+  </div>
+  <label for="nijBatchNamePattern">File name pattern</label>
+  <input id="nijBatchNamePattern" type="text" value="{name}_edit" maxlength="140" autocomplete="off" spellcheck="false" aria-describedby="nijBatchNameHelp">
+  <p class="nij-batch-hint" id="nijBatchNameHelp">Use {name} for the original name or {n} for the photo number. NijRAW adds the correct extension.</p>
+  <p class="nij-batch-hint">RAW inputs retain 16-bit processing when supported. JPEG output is 8-bit; PNG stores 16-bit samples losslessly. An 8-bit original cannot regain lost detail. Everything stays offline.</p>
+  <div class="nij-batch-actions"><button type="button" class="btn" onclick="document.getElementById('nijBatchDialog').close()">Cancel</button><button type="button" class="btn accent" id="nijBatchChoose" onclick="nijBatchChoosePhotos()">Choose photos</button></div>
+</dialog>
+
+<dialog id="nijSingleExportDialog" class="nij-batch-dialog nij-single-dialog" aria-labelledby="nijSingleTitle" aria-describedby="nijSingleDescription">
+  <h3 id="nijSingleTitle">Save photo</h3>
+  <p id="nijSingleDescription">Choose your file settings before saving.</p>
+  <label for="nijSingleFilename">File name</label>
+  <input id="nijSingleFilename" type="text" maxlength="160" autocomplete="off" spellcheck="false" aria-describedby="nijSingleFilenameHint">
+  <p id="nijSingleFilenameHint" class="nij-single-note">The correct extension will be added automatically.</p>
+  <div id="nijSingleQualityRow"><label for="nijSingleQuality">Quality</label><select id="nijSingleQuality"><option value="1">100% · maximum</option><option value="0.98" selected>98% · high quality</option><option value="0.92">92%</option><option value="0.85">85%</option><option value="0.75">75%</option></select></div>
+  <p id="nijSingleQualityNote" class="nij-single-note" hidden></p>
+  <label for="nijSingleColour">Colour space</label>
+  <select id="nijSingleColour"><option value="srgb">sRGB · standard</option><option value="p3">Display P3 · wide colour</option></select>
+  <label for="nijSingleResolution">Resolution</label>
+  <select id="nijSingleResolution" onchange="nijSyncSingleResolution()"><option value="0">Full resolution · all pixels</option><option value="3840">3840 px · 4K long edge</option><option value="2048">2048 px · web</option><option value="1080">1080 px · social</option><option value="2560">2560 px · large web</option><option value="1600">1600 px · sharing</option><option value="-1">Custom long edge…</option><option value="-2">Percentage…</option></select>
+  <div id="nijSingleCustomRow" hidden><label for="nijSingleCustom">Custom pixels or percentage</label><input id="nijSingleCustom" type="number" min="1" max="60000" step="1" value="2400" oninput="nijSyncSingleResolution()"></div>
+  <p id="nijSingleResolutionNote" class="nij-single-note" role="status"></p>
+  <div id="nijSingleExifRow" class="nij-single-checkbox"><label for="nijSingleExif">Include EXIF / location</label><input type="checkbox" id="nijSingleExif"></div>
+  <p id="nijSingleExifNote" class="nij-single-note">Off by default for privacy. Sharing EXIF may reveal your location.</p>
+  <div class="nij-batch-actions"><button type="button" class="btn" onclick="document.getElementById('nijSingleExportDialog').close()">Cancel</button><button type="button" class="btn accent" id="nijSingleSaveButton" onclick="nijConfirmSingleExport()">Save photo</button></div>
+</dialog>
+
+<dialog id="nijRawCrashDialog" aria-labelledby="nijRawCrashTitle" aria-describedby="nijRawCrashDesc" oncancel="event.preventDefault()">
+  <div class="nij-recovery-kicker">RAW DECODE RECOVERY</div>
+  <h3 id="nijRawCrashTitle">A RAW decode may have been interrupted</h3>
+  <p id="nijRawCrashDesc">A previous tab stopped reporting progress. The browser may have run out of memory. Try a lighter decode this time, or keep full sensor detail.</p>
+  <div class="nij-recovery-actions">
+    <button type="button" class="btn accent" onclick="NijRawCrashGuard.decide('fast')">Use fast mode this session</button>
+    <button type="button" class="btn" onclick="NijRawCrashGuard.decide('full')">Try full resolution</button>
+  </div>
+  <small>Fast mode still decodes 16-bit RAW, but at roughly half the width and height. Batch export continues to require full sensor resolution. This choice stays on your device.</small>
+</dialog>
+
+<div id="prog">
+  <div id="progdialog" role="dialog" aria-modal="true" aria-label="Loading previous workspace">
+    <div id="progt">Checking for a previous photo…</div>
+    <div id="progring"><svg viewBox="0 0 68 68"><circle class="progtrack" cx="34" cy="34" r="30"/><circle id="progcircle" class="progfill" cx="34" cy="34" r="30"/></svg><div id="progpct">0%</div></div>
+    <div id="progbarwrap"><div id="progbarpct"><span>Progress</span><strong id="progbarvalue">0%</strong></div><div id="progbar"><div id="progbarfill"></div></div></div>
+    <div id="progeta">Checking saved edits on this device…</div>
+    <div id="progactions"><button type="button" id="progcancel">Cancel</button></div>
+  </div>
+</div>
+<script>__NIJRAW_SCRIPT_00__</script>
+<div id="toast"></div>
+<div id="nijSampleGuide" role="dialog" aria-modal="false" aria-label="Sample photo guided first edit" aria-live="polite">
+  <div class="nij-guide-top"><span class="nij-guide-kicker" id="nijGuideKicker">GUIDED FIRST EDIT</span><button type="button" class="nij-guide-close" onclick="NijSampleGuide.close()" aria-label="Close guided edit">×</button></div>
+  <h3 class="nij-guide-title" id="nijGuideTitle">Welcome</h3>
+  <p class="nij-guide-copy" id="nijGuideCopy"></p>
+  <p class="nij-guide-credit">Photo: <a href="https://commons.wikimedia.org/wiki/File:North_Brofjorden_at_Sandvik_-_just_lens.jpg" target="_blank" rel="noopener noreferrer">North Brofjorden at Sandvik · W.carter (CC0)</a></p>
+  <div class="nij-guide-footer"><span class="nij-guide-dots" id="nijGuideCount">Step 1 of 11</span><button type="button" class="btn" id="nijGuideBack" onclick="NijSampleGuide.back()">Back</button><button type="button" class="btn" id="nijGuideSkip" onclick="NijSampleGuide.skip()">Skip step</button></div>
+</div>
+<div id="nijTourPointer" aria-hidden="true">Tap here</div>
+<script id="nijSampleJpeg" type="text/plain">__NIJRAW_SCRIPT_01__</script>
+
+
+<!-- HELP MODAL -->
+<div id="helpModal" onclick="if(event.target===this)closeHelp()">
+  <div class="help-card" role="dialog" aria-modal="true" aria-label="Help">
+    <div class="help-head">
+      <div class="hk">NijRAW <i>·</i> Help</div>
+      <button class="hx" onclick="closeHelp()" aria-label="Close help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="help-tabs">
+      <button class="help-tab on" data-help="start" onclick="helpTab('start')">Start here</button>
+      <button class="help-tab" data-help="icons" onclick="helpTab('icons')">Icon guide</button>
+      <button class="help-tab" data-help="use" onclick="helpTab('use')">How to use</button>
+      <button class="help-tab" data-help="feat" onclick="helpTab('feat')">Main features</button>
+      <button class="help-tab" data-help="how" onclick="helpTab('how')">How it works</button>
+      <button class="help-tab" data-help="trouble" onclick="helpTab('trouble')">Troubleshooting</button>
+    </div>
+    <div class="help-body">
+      <div class="help-sec on" data-helpsec="start">
+        <span class="help-pill">Private editing · your photos stay on your device</span>
+        <h4>Make your first edit</h4>
+        <ol>
+          <li><b>Import</b> a JPEG, PNG, HEIC or supported camera RAW photo.</li>
+          <li>Try <b>Auto improve</b> for a gentle starting point. Adjust its Strength, then fine-tune Light, Colour or Detail yourself.</li>
+          <li>Use <b>Subject</b> and <b>Local adjustments</b> to edit one area. Use <b>Retouch → Heal</b> for spots.</li>
+          <li>Hold the <b>eye</b> button to see the original, or choose <b>Split compare</b>. <b>Two Looks</b> lets you compare two different edits before keeping one.</li>
+          <li>Tap <b>Save edits</b> (or Ctrl/⌘+S) to save in this browser. For a portable backup, choose <b>Export → Save project (.nijraw)</b>.</li>
+          <li>Choose <b>Export</b> to download a photo. For easy sharing, use <b>JPEG · sRGB</b>; for lossless output, choose PNG or TIFF.</li>
+          <li>Open <b>Library</b> to revisit saved photos, give ratings or make albums. Tap Library again to return to editing.</li>
+          <li>To start over, tap <b>Remove photo</b>, then Import another. This does not delete the original or a saved Library copy.</li>
+        </ol>
+        <p>Want to practise? The built-in sample walks you through 11 short steps, including saving, exporting and using Library. It works offline and is not added to Library automatically.</p>
+        <button type="button" class="help-linkbtn" onclick="nijOpenSamplePhoto()">Try the sample photo · guided first edit</button>
+        <p><b>Privacy:</b> NijRAW processes photos on your device without uploading them. Optional links to external websites follow those sites' privacy policies.</p>
+        <p><b>Keep a backup:</b> Browser storage can be cleared. Save a <b>.nijraw project</b> somewhere safe if the edits matter to you.</p>
+        <p class="hint">Practice image: <i>North Brofjorden at Sandvik — just lens</i> by W.carter (2017), unprocessed straight from the camera, public-domain CC0 1.0. <a href="https://commons.wikimedia.org/wiki/File:North_Brofjorden_at_Sandvik_-_just_lens.jpg" target="_blank" rel="noopener noreferrer">Image source and license</a>. Bundled inside this HTML; opening it never downloads anything.</p>
+        <p><b>Performance:</b> NijRAW uses the GPU where available and falls back to the CPU when needed. Large RAW exports may take longer; check the progress display or GPU/CPU badge.</p>
+        <p id="nijHelpRuntime" class="hint" role="status">Current photo details will appear here when a photo is open.</p>
+        <div class="help-welcome-row">
+          <button type="button" class="help-linkbtn" onclick="helpTab('icons')">What do the icons mean?</button>
+          <button type="button" class="help-linkbtn" onclick="closeHelp();openSplash(true)">Show welcome screen</button>
+        </div>
+      </div>
+
+      <div class="help-sec" data-helpsec="icons">
+        <p>A quick reference to the buttons you see around the photo. Some tools are disabled until a photo is open. On phones, swipe the editing toolbar or tap <b>More →</b> to reveal the rest.</p>
+        <h4>Top bar</h4>
+        <div class="help-icon-grid" role="list">
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnImport"><span class="help-icon-graphic" aria-hidden="true">↑</span><span class="help-icon-copy"><b>Import</b><small>Open a photo or a saved NijRAW project.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnLibrary"><span class="help-icon-graphic" aria-hidden="true">▦</span><span class="help-icon-copy"><b>Library</b><small>Browse saved photos, ratings, albums and edits.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="[data-gpu-status]"><span class="help-icon-graphic" aria-hidden="true">▣</span><span class="help-icon-copy"><b>GPU / CPU</b><small>Preview renderer status. Tap it for timing details and a copyable diagnostic report.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-glyph="16-bit ▾"><span class="help-icon-graphic" aria-hidden="true">16b</span><span class="help-icon-copy"><b>Sensor · 16-bit</b><small>Tap for RAW decoding and camera colour profiles.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnExport"><span class="help-icon-graphic" aria-hidden="true">↓</span><span class="help-icon-copy"><b>Export</b><small>Download an edited photo, project or recipe.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#mobileGearBtn"><span class="help-icon-graphic" aria-hidden="true">☷</span><span class="help-icon-copy"><b>Settings</b><small>Appearance, Help and RAW settings.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#mobileHelpBtn"><span class="help-icon-graphic" aria-hidden="true">?</span><span class="help-icon-copy"><b>Help (?)</b><small>Open instructions, shortcuts and this guide.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-glyph="☾ / ☀"><span class="help-icon-graphic" aria-hidden="true">☾</span><span class="help-icon-copy"><b>Moon / sun</b><small>Switch between dark and light appearance in Settings.</small></span></div>
+        </div>
+        <h4>Editing toolbar</h4>
+        <div class="help-icon-grid" role="list">
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnSaveEdits"><span class="help-icon-graphic" aria-hidden="true">✓</span><span class="help-icon-copy"><b>Save edits</b><small>Save your current work in this browser.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnUndo"><span class="help-icon-graphic" aria-hidden="true">↶</span><span class="help-icon-copy"><b>Undo</b><small>Reverse the last edit.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnRedo"><span class="help-icon-graphic" aria-hidden="true">↷</span><span class="help-icon-copy"><b>Redo</b><small>Restore an undone edit.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnTwoLooks"><span class="help-icon-graphic" aria-hidden="true">A/B</span><span class="help-icon-copy"><b>Two Looks</b><small>Try a second edit and compare it with your first.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnLensQuickOff"><span class="help-icon-graphic" aria-hidden="true">⊘</span><span class="help-icon-copy"><b>Lens correction off</b><small>Appears only when Lensfun corrections are active. Tap to return to editing; your profile stays selected.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnCloseMobile"><span class="help-icon-graphic" aria-hidden="true">×</span><span class="help-icon-copy"><b>Remove photo</b><small>Clear the workspace; Library copies stay saved.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnCrop"><span class="help-icon-graphic" aria-hidden="true">⌗</span><span class="help-icon-copy"><b>Crop</b><small>Reframe with a lightweight preview; Apply processes full-resolution pixels.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnRotate"><span class="help-icon-graphic" aria-hidden="true">⟳</span><span class="help-icon-copy"><b>Rotate / straighten</b><small>Drag a lightweight visual preview; release to process the final angle.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnAuto"><span class="help-icon-graphic" aria-hidden="true">☼</span><span class="help-icon-copy"><b>Auto improve</b><small>Rule-based tone, colour, Clarity and Sharpness. One button, tap again to undo.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnDenoise"><span class="help-icon-graphic" aria-hidden="true">∿</span><span class="help-icon-copy"><b>Denoise</b><small>Reduce grain and colour speckles.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnHold"><span class="help-icon-graphic" aria-hidden="true">◉</span><span class="help-icon-copy"><b>Eye / original</b><small>Press and hold to compare with the original.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnSplit"><span class="help-icon-graphic" aria-hidden="true">◧</span><span class="help-icon-copy"><b>Split comparison</b><small>See before and after side by side.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnHistPick"><span class="help-icon-graphic" aria-hidden="true">▥</span><span class="help-icon-copy"><b>Histogram bars</b><small>Inspect tones and choose black/white points.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnHistory"><span class="help-icon-graphic" aria-hidden="true">◴</span><span class="help-icon-copy"><b>History clock</b><small>View and return to earlier edit steps.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#btnReset"><span class="help-icon-graphic" aria-hidden="true">⟲</span><span class="help-icon-copy"><b>Reset all</b><small>Restore original dimensions, orientation and adjustments. Baked edits require a fresh decode.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#toolstrip-chevron"><span class="help-icon-graphic" aria-hidden="true">›</span><span class="help-icon-copy"><b>More / arrow</b><small>Reveal toolbar tools that do not fit.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-glyph="✓ / ×"><span class="help-icon-graphic" aria-hidden="true">✓</span><span class="help-icon-copy"><b>Apply / cancel</b><small>Confirm or discard a crop.</small></span></div>
+        </div>
+        <h4>Photo preview</h4>
+        <div class="help-icon-grid" role="list">
+          <div class="help-icon-item" role="listitem" data-help-icon="[data-zcpan]"><span class="help-icon-graphic" aria-hidden="true">✋</span><span class="help-icon-copy"><b>Hand / grab</b><small>Turn on dragging to move a zoomed photo.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#zoomctl button[title='Zoom out']"><span class="help-icon-graphic" aria-hidden="true">−</span><span class="help-icon-copy"><b>Minus</b><small>Zoom out.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-glyph="100%"><span class="help-icon-graphic" aria-hidden="true">100%</span><span class="help-icon-copy"><b>Zoom percentage</b><small>Shows zoom level; tap to reset the view.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#zoomctl button[title='Zoom in']"><span class="help-icon-graphic" aria-hidden="true">+</span><span class="help-icon-copy"><b>Plus</b><small>Zoom in.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-glyph="◐"><span class="help-icon-graphic" aria-hidden="true">◐</span><span class="help-icon-copy"><b>Half-filled circle</b><small>Toggle a neutral grey background behind the photo.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-glyph="1:1"><span class="help-icon-graphic" aria-hidden="true">1:1</span><span class="help-icon-copy"><b>1:1 inspection</b><small>Inspect decoded pixels; the noise view freezes while you drag a denoise slider.</small></span></div>
+          <div class="help-icon-item" role="listitem" data-help-icon="#grip .gp"><span class="help-icon-graphic" aria-hidden="true">☷</span><span class="help-icon-copy"><b>Adjustments</b><small>Open or collapse the editing panel on phones.</small></span></div>
+        </div>
+        <p>Open <b>Quick, Advanced, Subject, Retouch</b> or <b>Insights</b> to see the full tool names.</p>
+      </div>
+
+      <div class="help-sec" data-helpsec="use">
+        <h4>Adjust and compare</h4>
+        <p>Use <b>Quick</b> for everyday adjustments and <b>Advanced</b> for curves, colour, detail and geometry. <b>Auto improve</b> gives you a starting point without AI; tap it again to undo Auto. Use <b>Undo</b> or <b>History</b> for other changes. Hold the eye button or choose <b>Split compare</b> to check before and after.</p>
+        <p><b>Try Two Looks:</b> Tap A/B in the toolbar. NijRAW saves your current edit as <b>A</b> and opens a fresh version as <b>B</b>. Switch between them, tap <b>Compare</b>, then <b>Keep A</b> or <b>Keep B</b>. Save or export the one you keep.</p>
+        <p><b>Bright RAW highlights:</b> Move Highlights left to bring back visible tone where the sensor captured it. Fully clipped detail cannot be recovered.</p>
+        <h4>Masks and retouch</h4>
+        <p><b>Subject</b> lets you edit the subject and background separately. Start with <b>Auto select</b>, <b>Tap an area</b> or <b>Box around subject</b>. The selection uses colour, texture and edges rather than AI object recognition, so similar-looking backgrounds may need correction. Check <b>Overlay</b> or <b>Subject only</b>; use <b>Add</b> for missing areas, <b>Brush away</b> or <b>Erase by colour</b> for unwanted areas. The overlay is only a guide and is never exported.</p>
+        <p><b>Local adjustments</b> lets you stack up to eight radial, linear or brush masks. Choose <b>Done with local adjustments</b> to return to the main controls.</p>
+        <p>In <b>Retouch</b>, use <b>Heal</b> for dust or blemishes and <b>Clone</b> to copy detail from another part of the photo. Each repair can be undone. There is no automatic dust scan.</p>
+        <h4>Noise removal (Denoise)</h4>
+        <p>Tap <b>Denoise → Auto</b>, then adjust <b>Strength</b> for grain and <b>Colour</b> for coloured speckles. Strength 0 turns it off. Check at <b>1:1</b>: the detail view pauses while you move a slider and refreshes when you let go. This noise-check view may omit sharpening or geometry for speed; the normal preview and export still include your edits.</p>
+        <h4>Crop, geometry and detail</h4>
+        <p>Use <b>Crop</b>, <b>Rotate</b> and <b>Advanced → Geometry</b> to fix framing without changing the original RAW. The <b>Rotate → Auto Upright</b> button measures straight edges with a classical Hough transform (no AI). It works best on buildings; check the result before keeping it. <b>Advanced → Geometry → Four corners</b> lets you adjust perspective by hand and crops inward to avoid blank wedges. Fine-tune with the keystone sliders. For a close look, use <b>1:1 inspection → Pick area</b>.</p>
+        <p><b>Lens corrections:</b> Choose a matching Lensfun profile under <b>Advanced</b>. A suggested profile is not applied until you enable it. The crossed-out lens button turns correction off without forgetting your choice.</p>
+        <h4>Save or export</h4>
+        <p><b>Single-photo export:</b> Open Export and choose <b>JPEG, PNG or TIFF</b>. Set the file name, quality or bit depth, colour space and resolution. JPEG quality is adjustable; PNG and TIFF offer lossless output. High-bit-depth TIFF needs full-resolution decoded data. WebP and AVIF are available when supported by the browser.</p>
+        <p><b>Batch editing:</b> Choose <b>Batch edit photos</b> at the top of Export, or in Quick below Auto improve. Choose <b>8-bit JPEG</b> (adjustable quality) or <b>16-bit PNG</b> (lossless), then a file naming pattern and the photos to edit. Batch copies the current photo's tone and colour but not its crop, perspective, retouch, masks or lens corrections. RAW inputs use full 16-bit sensor decoding when supported, with no embedded-preview substitution. <b>Library → Export selected</b> uses each photo's own saved edits, with the same format and name choices. Your browser may request multiple-download permission. Cancel stops and restores your original photo.</p>
+        <p><b>Save edits</b> keeps your session in this browser. <b>Save project (.nijraw)</b> downloads an editable backup. Opening a project restores its edits and adds a separate copy to your Library when auto-add is enabled. EXIF and location data are <b>off by default</b> in photo exports; turn them on only if you want to share that information. A project keeps the original file, including its metadata.</p>
+        <p><b>Reuse your edit settings:</b> In Export, choose <b>Save My Edit Settings</b> to keep your adjustments in a small file. Open another photo and choose <b>Apply Saved Settings</b> to try them there. The settings file does not contain your photo.</p>
+        <p><b>Shortcuts:</b> Ctrl/⌘+Z undo · Ctrl/⌘+Shift+Z redo · J clipping warning · Esc close dialog.</p>
+      </div>
+
+      <div class="help-sec" data-helpsec="feat">
+        <h4>What you can do</h4>
+        <p><b>Files you can open:</b> JPEG, PNG, WebP and other browser-supported images, plus camera RAW formats such as DNG, ARW, NEF, CR2/CR3, RAF, ORF and RW2. Support depends on the camera and browser; some RAW files have only an embedded-preview fallback.</p>
+        <ul>
+          <li><b>Develop RAW photos:</b> adjust camera white balance, colour profiles and how supported RAW files are decoded.</li>
+          <li><b>Improve light and colour:</b> use Auto, curves, HSL, colour grading, LUTs, denoise, sharpening and dehaze.</li>
+          <li><b>Edit just part of a photo:</b> separate subject/background, paint masks, heal spots or clone detail.</li>
+          <li><b>Fix framing and lenses:</b> crop, rotate, straighten, correct perspective and apply matching Lensfun lens profiles.</li>
+          <li><b>Compare ideas:</b> use before/after, History and <b>Two Looks</b> to decide which edit you prefer.</li>
+          <li><b>Keep and share work:</b> on-device Library, ratings, albums, recipes, .nijraw projects, individual exports and JPEG or 16-bit PNG batch exports.</li>
+        </ul>
+        <p><b>Insights and Photo Guide:</b> Get on-device measurements and photography tips without AI or cloud analysis. The score checks light, edge detail and composition clues in the <b>original</b>; it is not a judgment of your creativity. Choose a topic or <b>From the photo checks</b> for a suggestion. Changing tips does not change the score. External guides explain techniques, not NijRAW's rating.</p>
+      </div>
+
+      <div class="help-sec" data-helpsec="how">
+        <h4>What happens to a RAW photo?</h4>
+        <p>NijRAW decodes supported camera RAW files on your device using LibRaw. The default camera-native path keeps 16-bit sensor colour data and uses high-precision calculations while you edit. Export converts the result to your chosen colour space, usually sRGB or Display P3. Some cameras and image formats use a compatibility path instead.</p>
+        <h4>Camera DCP profiles</h4>
+        <p>After opening a RAW photo, use the <b>Sensor · 16-bit</b> settings chip to import a <b>.dcp</b> camera profile. NijRAW stores it locally for that camera model. Standard one- and two-illuminant SDR profiles are supported; unsupported HDR/adaptive profiles are rejected. Re-decode the photo after changing profiles.</p>
+        <h4>Why does the preview look different?</h4>
+        <p>The editing preview is sized for your screen so sliders stay responsive. Where possible, the GPU handles colour, sharpness, masks and geometry; otherwise the CPU takes over. Some preview effects are approximations. Full-resolution exports use the more precise processing path, which can take longer.</p>
+        <p><b>1:1 inspection</b> shows actual decoded detail from a chosen area, not an enlarged preview. With Denoise on, it focuses on an accurate noise patch and may temporarily leave out geometry or finishing effects. Those edits are still included in the exported photo. Tap the <b>GPU/CPU</b> badge for timings and fallback details.</p>
+        <h4>Current limits</h4>
+        <p>RAW support varies by camera. On memory-limited devices, full decoding may fail and NijRAW may use an identified 8-bit embedded preview or offer a lower-memory mode. Colour accuracy depends on your browser and display; completely clipped sensor detail cannot be recovered. Batch export supports 8-bit JPEG and 16-bit PNG; TIFF is available through single-photo export. Editing works offline.</p>
+        <h4>About, contact and licensing</h4>
+        <p><b>NijRAW</b> · Copyright © 2026 Akartri. The original application code is licensed under GPLv3, with separate terms for included components. <button type="button" class="nij-legal-link" onclick="document.getElementById('nijLicenseDialog').showModal()">View licenses</button>.</p>
+        <p>Website: <a href="https://akartri.com" target="_blank" rel="noopener noreferrer">akartri.com</a>. Questions or suggestions: <a href="mailto:contact@akartri.com">contact@akartri.com</a>. LibRaw: <a href="https://github.com/LibRaw/LibRaw/tree/0.22.3" target="_blank" rel="noopener noreferrer">source and licensing</a>.</p>
+      </div>
+
+      <div class="help-sec" data-helpsec="trouble">
+        <h4>Common fixes</h4>
+        <div class="qa"><div class="q">My RAW file will not open</div><div class="a">Not every camera format is supported. Try the embedded preview, or convert the file to DNG or TIFF using your camera software.</div></div>
+        <div class="qa"><div class="q">RAW colours look wrong</div><div class="a">Open the <b>Sensor · 16-bit</b> settings chip and expand <b>RAW decoding troubleshooting</b>. Try camera-native or compatible sRGB mode, LibRaw Standard or an imported DCP profile, then re-decode.</div></div>
+        <div class="qa"><div class="q">The preview is slow or flickers</div><div class="a">Tap the <b>GPU/CPU</b> badge to see the cause. Heavy noise or lens effects may need CPU processing. Try turning lens correction off temporarily, reopening the photo or refreshing the page.</div></div>
+        <div class="qa"><div class="q">The diagnostic report will not copy</div><div class="a">Some browsers restrict copying from local HTML files. Select the report text and copy it manually, or try opening NijRAW from its HTTPS page.</div></div>
+        <div class="qa"><div class="q">Noise remains, or details look waxy</div><div class="a">Try <b>Denoise → Auto</b>. Raise Colour for coloured speckles; lower Strength if hair or fine texture loses detail. Use the normal preview or an export to judge the final sharpening too.</div></div>
+        <div class="qa"><div class="q">My mask has no effect</div><div class="a">Select the mask, turn up Strength and move an adjustment away from zero. For a brush mask, make sure you have painted an area.</div></div>
+        <div class="qa"><div class="q">My exported colours look different</div><div class="a">Choose <b>sRGB</b> for broad compatibility. Display P3 works best in colour-managed apps and displays.</div></div>
+        <div class="qa"><div class="q">My JPEG is small. Did it lose pixels?</div><div class="a">Not necessarily: JPEG compresses images. Choose <b>Export → Resolution → Full resolution</b> and check the downloaded pixel dimensions. Cropping changes dimensions. If the RAW shows <b>Embedded preview · 8-bit</b>, open mobile Settings or the Sensor chip and select <b>Decode full RAW</b>.</div></div>
+        <div class="qa"><div class="q">Can batch save a 16-bit JPEG?</div><div class="a">Widely compatible JPEGs are 8-bit; 16-bit JPEG extensions need specialized encoders and readers. NijRAW lets you choose 8-bit JPEG (75–100% quality) or a lossless 16-bit PNG instead. Both use the 16-bit RAW source when available. For 16-bit TIFF, export a photo individually.</div></div>
+        <div class="qa"><div class="q">How do I keep edits or move to another device?</div><div class="a">Choose <b>Export → Save project (.nijraw)</b> and keep the downloaded file. Browser storage is convenient, but it can be cleared.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FIRST-RUN WELCOME / SPLASH — reuses the modal card visual language -->
+<div id="splashModal" onclick="if(event.target===this)dismissSplash()">
+  <div class="splash-card" role="dialog" aria-modal="true" aria-labelledby="splashTitle">
+    <div class="splash-scroll">
+    <div class="splash-brand" id="splashTitle">Nij<i>RAW</i></div>
+    <span class="splash-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Runs entirely on your device</span>
+    <ul class="splash-lines">
+      <li>A <b>Photo editor</b> that develops, retouches and exports your photos right here in the browser.</li>
+      <li>Your photos and their data <b>never leave this device</b>, nothing is uploaded.</li>
+      <li>To start: load your own photo or practise with our <b>offline sample</b>, then try the single <b>Auto improve</b> action.</li>
+      <li><b>Ready for your next photo?</b> Tap <b>Remove photo</b> (top bar on desktop, editing toolbar on phones), confirm, then tap <b>Import</b>. It clears this workspace without deleting the original file or its saved Library copy. Unsaved changes may be lost.</li>
+      <li><b>Organize in Library:</b> tap <b>Library</b> in the top bar to revisit saved photos and edits. Choose <b>Add photos</b>, select images, use <b>Album…</b> to group them, and tap a thumbnail to open it again. Keep a downloaded <b>.nijraw project</b> as an extra backup.</li>
+    </ul>
+    <button type="button" class="splash-demo" data-demo-link onclick="openDemoVideo()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Watch a quick demo <span aria-hidden="true">↗</span>
+    </button>
+    <p class="splash-note">The demo opens on YouTube in a new browser tab. Everything else in NijRAW stays on your device, and nothing is uploaded.</p>
+    </div>
+    <div class="splash-foot">
+      <label class="splash-check"><input type="checkbox" id="splashHide"> Do not show this again</label>
+      <button type="button" class="btn" onclick="dismissSplash();nijOpenSamplePhoto()">Try guided sample photo</button>
+      <button type="button" class="btn accent" onclick="dismissSplash()">Get started</button>
+      <div class="splash-hint">Leave unchecked to see this next time. You can reopen it from <b>Help → Show welcome screen</b>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- 1:1 inspector reads the export graph at actual decoded-pixel resolution,
+     not the downsampled interactive preview. Half-RAW is identified explicitly. -->
+<div id="nij1to1" role="dialog" aria-modal="false" aria-label="100 percent detail inspector">
+  <div class="pixel-head"><strong class="pixel-drag-handle" title="Drag to move the 1:1 inspection window"><span class="pixel-grip" aria-hidden="true">⠿</span>1:1 · Detail inspection</strong><span class="pixel-status" id="nij1to1status" role="status" aria-live="polite" title="Drag to move this window">Preparing tiles…</span>
+    <label><input id="nij1to1masks" type="checkbox" onchange="NijPixelView.maskChanged()"> Show mask tint</label>
+    <button id="nij1to1fullraw" type="button" hidden onclick="NijPixelView.fullRaw()" title="Decode the original RAW sensor data at full resolution; Auto remains the default for other images">Full RAW detail</button>
+    <button id="nij1to1pick" type="button" aria-pressed="false" onclick="NijPixelView.pick()" title="Choose a point on the photograph to inspect using original pixels">Pick area</button>
+    <button type="button" onclick="NijPixelView.refresh()" title="Re-render the current full-resolution edit">Refresh</button>
+    <button type="button" onclick="NijPixelView.toggleExpand()" title="Switch between floating and full-screen inspection">Expand</button>
+    <button type="button" onclick="NijPixelView.close()">Close</button></div>
+  <div id="nij1to1viewport"><div id="nij1to1scroll"><canvas id="nij1to1layer"></canvas><div id="nij1to1spacer"></div></div><canvas id="nij1to1freeze" aria-hidden="true"></canvas></div>
+  <div class="pixel-help">Actual decoded pixels, not an enlarged preview. During a denoise adjustment the last 1:1 image stays visible; release the slider to refresh the noise detail. Active Heal repairs are included; some other spatial finishing effects may be omitted to keep Chrome responsive. Esc closes.</div>
+</div>
+
+
+<!-- 03 / OFFLINE VENDOR PAYLOADS
+     These blobs are intentionally minified/generated. They are decoded from
+     their local script tags; never pretty-print or re-sequence their bytes. -->
+<!-- Complete offline license copies: inert text, never executed. -->
+<script id="nijraw-gplv3-license" type="text/plain">__NIJRAW_SCRIPT_02__</script>
+<script id="nijraw-lgpl21-license" type="text/plain">__NIJRAW_SCRIPT_03__</script>
+<script id="nijraw-lgpl3-license" type="text/plain">__NIJRAW_SCRIPT_04__</script>
+<script id="libheif-inline" type="text/plain">__NIJRAW_SCRIPT_05__</script>
+<script id="librawInline" type="text/plain">__NIJRAW_SCRIPT_06__</script>
+
+<!-- Upstream lensfun/lensfun data/db snapshot obtained 2026-10-30; CC BY-SA 3.0;
+transformed into a subset of supported coefficients. Archive SHA-256:
+f4f297ac93f1b9c2250303d93c0535295c3e3966fa8da89f5b170bbd260877a9
+Source and license:
+https://github.com/lensfun/lensfun/tree/master/data/db
+https://creativecommons.org/licenses/by-sa/3.0/ -->
+<script id="nijraw-lensfun-bundle" type="application/json">__NIJRAW_SCRIPT_07__</script>
+
+<!-- 04–09 / APPLICATION SOURCE
+     The classic script below contains named, documented sections. The later
+     short scripts add UI affordances after the editor has been defined. -->
+<script>__NIJRAW_SCRIPT_08__</script>
+<!-- 09 / SMALL UI ENHANCEMENTS — loaded after the main application script.
+     These snippets intentionally do not alter colour or image data. -->
+<script>__NIJRAW_SCRIPT_09__</script>
+<script>__NIJRAW_SCRIPT_10__</script>
+<script>__NIJRAW_SCRIPT_11__</script>
+<script>__NIJRAW_SCRIPT_12__</script>
+
+
+<!-- Offline access to the verbatim GPL/LGPL texts embedded above. -->
+<script>__NIJRAW_SCRIPT_13__</script>
+
+</body>
+</html>
