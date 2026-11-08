@@ -1,5 +1,7 @@
 # NijRAW
 
+**Official website:** [nijraw.com](https://nijraw.com)
+
 **Private, non-AI photo editing in your browser.** NijRAW develops supported camera RAW files, offers approachable editing controls, and keeps image processing on the device. It is designed for beginners and intermediate photographers who prefer conventional imaging algorithms over generative AI.
 
 NijRAW is distributed as a **single self-contained HTML file**. This repository also includes the extracted, editable application source, bundled dependency payloads, licensing information, and a dependency-free build/verification process.
